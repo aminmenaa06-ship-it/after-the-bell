@@ -169,6 +169,15 @@ details.data-view summary { cursor: pointer; color: var(--ink-2); }
 .refs { font-size: 12px; color: var(--ink-3); }
 .refs a { font-family: var(--mono); margin-right: 6px; }
 
+/* ---------- latest headlines */
+.heads { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 0 36px; }
+.heads li { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.heads time { font: 500 12.5px/1.5 var(--mono); color: var(--ink-2); }
+.heads time small { display: block; font-size: 11px; color: var(--ink-3); font-weight: 400; }
+.heads a { font-weight: 500; text-decoration: none; }
+.heads a:hover { text-decoration: underline; }
+.heads .src { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+
 /* ---------- sectors */
 .sector-head, .sector { display: grid; grid-template-columns: minmax(170px, 1.35fr) 120px minmax(120px, 1fr) minmax(120px, 1fr) 70px 70px; gap: 6px 22px; align-items: center; }
 .sector-head { padding: 12px 0 8px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--rule); }
@@ -273,7 +282,8 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     <a class="brand" href="./">After the Bell<small>US market report · every trading day</small></a>
     <div class="edition">
       <span class="date" id="edition-date">Loading…</span>
-      <span id="edition-asof">Data as of the 4:00 PM ET close</span>
+      <span id="edition-asof">Prices as of the 4:00 PM ET close</span>
+      <span id="news-asof" hidden></span>
       <span class="control"><label for="archive">Edition</label><select id="archive" aria-label="Choose a report date"></select></span>
       <button class="btn" id="theme-btn" type="button" aria-label="Change color theme">Theme: Auto</button>
     </div>
@@ -284,6 +294,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
   <ul>
     <li><a href="#summary">Summary</a></li>
     <li><a href="#drivers">What's moving</a></li>
+    <li><a href="#headlines">Headlines</a></li>
     <li><a href="#sectors">Sectors</a></li>
     <li><a href="#stocks">Stocks to watch</a></li>
     <li><a href="#watchlist">Watchlist</a></li>
@@ -315,6 +326,11 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     <section id="drivers" aria-labelledby="drivers-h">
       <div class="section-head"><h2 id="drivers-h">What's moving markets</h2><p>The news behind today's tape, with sources.</p></div>
       <div class="drivers" id="driver-list"></div>
+    </section>
+
+    <section id="headlines" aria-labelledby="heads-h" hidden>
+      <div class="section-head"><h2 id="heads-h">Latest headlines</h2><p id="heads-note">The newest market stories from major publishers when this edition was built, newest first.</p></div>
+      <ol class="heads" id="head-list"></ol>
     </section>
 
     <section id="sectors" aria-labelledby="sectors-h">
@@ -522,6 +538,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     renderFigures(r);
     renderChart(r.market.series);
     renderDrivers(r);
+    renderHeadlines(r);
     renderSectors(r.sectors);
     renderPicks(r);
     renderWatch(r.watchlist);
@@ -718,6 +735,24 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     $("#driver-list").replaceChildren(...(r.drivers.length ? r.drivers.map((d) =>
       h("article", { class: "driver" }, h("div", null, tone[d.tone] || tone.mixed), h("h3", { text: d.title }), h("p", { text: d.body }), refLinks(d.sources, r.sources)))
       : [h("p", { class: "muted", text: "No news summary for this edition." })]));
+  }
+
+  const etTime = (iso) => new Date(iso).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  const etDay = (iso) => new Date(iso).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+
+  function renderHeadlines(r) {
+    const list = r.headlines || [];
+    const stamp = $("#news-asof");
+    stamp.hidden = !r.newsAsOf;
+    if (r.newsAsOf) stamp.textContent = "News through " + etTime(r.newsAsOf) + " ET, " + etDay(r.newsAsOf);
+    $("#headlines").hidden = !list.length;
+    $("#head-list").replaceChildren(...list.map((x) => {
+      const url = safeUrl(x.url);
+      return h("li", null,
+        h("time", { datetime: x.time }, etTime(x.time), h("small", { text: etDay(x.time) + " · ET" })),
+        h("div", null, url ? h("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : h("span", { text: x.title }),
+          h("span", { class: "src", text: x.source + (x.topic ? " · " + x.topic : "") })));
+    }));
   }
 
   function meter(v, label) {

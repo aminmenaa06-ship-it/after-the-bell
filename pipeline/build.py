@@ -116,6 +116,8 @@ def validate(news, scored_syms):
         else:
             warns.append(f"watch {sym} dropped")
 
+    out["featured"] = [int(n) for n in (news.get("featuredHeadlines") or [])
+                       if isinstance(n, (int, float, str)) and str(n).isdigit()][:12]
     out["avoid"] = [{"name": s(a.get("name"), 60), "detail": s(a.get("detail"), 320)}
                     for a in news.get("avoid") or [] if s(a.get("name"), 60)][:8]
     out["risks"] = [{"title": s(r.get("title"), 90), "body": s(r.get("body"), 500)}
@@ -173,6 +175,24 @@ def main():
         n = (news or {}).get("sectors", {}).get(x["name"], {})
         sectors.append({**x, "stance": n.get("stance"), "note": n.get("note")})
 
+    # Latest headlines from the feed (already ranked by publisher); shown as text with https links only.
+    heads_path = work / "headlines.json"
+    feed = json.loads(heads_path.read_text()) if heads_path.exists() else {}
+    market = feed.get("market", [])
+    chosen = [market[n - 1] for n in (news or {}).get("featured", []) if 1 <= n <= len(market)]
+    if len(chosen) < 4:  # fallback: newest reputable items, balanced across topics
+        caps = {"Markets": 5, "Fed & rates": 3, "Earnings": 3, "Economy": 2, "Energy": 2, "Sectors": 2, "Commodities": 1}
+        used, chosen = {}, []
+        for h_ in market:
+            t = h_.get("topic")
+            if h_.get("reputable") and used.get(t, 0) < caps.get(t, 1):
+                used[t] = used.get(t, 0) + 1
+                chosen.append(h_)
+    headlines = sorted(({"title": s(h_.get("title"), 220), "source": s(h_.get("source"), 60), "url": h_["url"],
+                         "time": h_.get("time"), "topic": s(h_.get("topic"), 20)}
+                        for h_ in chosen if str(h_.get("url", "")).startswith("https://")),
+                       key=lambda x: x["time"] or "", reverse=True)[:14]
+
     picks = [{**enrich(p["sym"]), "tier": p["tier"], "thesis": p["thesis"]} for p in (news or {}).get("picks", [])]
     picks.sort(key=lambda p: 0 if p["tier"] == "buy" else 1)
     watch = [{**enrich(w["sym"]), "trigger": w["trigger"]} for w in (news or {}).get("watchlist", [])]
@@ -180,6 +200,7 @@ def main():
     report = {
         "date": a.as_of, "asOf": tech["asOf"], "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "universe": tech["universe"], "newsAvailable": news is not None,
+        "newsAsOf": feed.get("fetchedAt"), "headlines": headlines,
         "headline": (news or {}).get("headline") or "Technical scan only today",
         "summary": (news or {}).get("summary") or
                    "The news step did not finish for this session, so this report carries the technical scan without commentary.",

@@ -36,13 +36,17 @@ fi
 
 W="work/$AS_OF"
 NEWS="$W/news.json"; [[ $DRY -eq 1 ]] && NEWS="$W/news-dryrun.json"
+# Fresh timestamped headline feed (Google News RSS). Non-fatal: the news step still has web search.
+.venv/bin/python pipeline/headlines.py "$AS_OF" || { echo "warn: headline feed failed"; rm -f "$W/headlines.md" "$W/headlines.json"; }
 .venv/bin/python - "$AS_OF" > "$W/prompt.md" <<'EOF'
 import datetime, pathlib, sys
 as_of = sys.argv[1]
 tpl = pathlib.Path("pipeline/NEWS_PROMPT.md").read_text()
 digest = pathlib.Path(f"work/{as_of}/digest.md").read_text()
+hp = pathlib.Path(f"work/{as_of}/headlines.md")
+heads = hp.read_text() if hp.exists() else "(The headline feed was unavailable this run; rely on WebSearch.)"
 now = datetime.datetime.now().astimezone().strftime("%A %B %d, %Y %I:%M %p %Z")
-print(tpl.replace("{{AS_OF}}", as_of).replace("{{NOW}}", now).replace("{{DIGEST}}", digest))
+print(tpl.replace("{{AS_OF}}", as_of).replace("{{NOW}}", now).replace("{{DIGEST}}", digest).replace("{{HEADLINES}}", heads))
 EOF
 
 NEWS_OK=0
