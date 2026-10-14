@@ -42,7 +42,8 @@ THEME_ETF = {
     "TAN": "Solar", "URA": "Uranium", "TLT": "Long Treasuries", "GLD": "Gold",
     "IWM": "Small caps", "RSP": "S&P 500 equal weight", "QQQ": "Nasdaq 100",
 }
-TAPE = [  # (yahoo symbol, label, unit)
+TAPE = [  # (yahoo symbol, label, unit). Futures first: they trade overnight, so they are live pre-market.
+    ("ES=F", "S&P 500 futures", ""), ("NQ=F", "Nasdaq 100 futures", ""),
     ("^GSPC", "S&P 500", ""), ("^IXIC", "Nasdaq", ""), ("^DJI", "Dow", ""), ("^RUT", "Russell 2000", ""),
     ("^VIX", "VIX", ""), ("^TNX", "10-yr yield", "%"), ("DX-Y.NYB", "Dollar index", ""),
     ("BZ=F", "Brent", "$"), ("CL=F", "WTI crude", "$"), ("GC=F", "Gold", "$"), ("HG=F", "Copper", "$"),

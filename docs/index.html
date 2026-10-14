@@ -78,6 +78,8 @@ button, select { font: inherit; color: inherit; }
 .brand small { display: block; margin-top: 6px; font: 500 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .edition { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; color: var(--ink-2); }
 .edition .date { font-weight: 600; color: var(--ink); }
+.edition .kind { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--sheet); background: var(--ink); padding: 3px 7px; border-radius: 3px; }
+.edition .kind:empty { display: none; }
 .control { display: inline-flex; align-items: center; gap: 6px; }
 .control label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
 select, .btn {
@@ -117,6 +119,17 @@ h3 { font: 600 15px/1.35 var(--sans); }
 .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--ink); }
 .section-head p { margin: 0; max-width: 62ch; font-size: 14px; color: var(--ink-2); }
 .lede { margin: 18px 0 0; max-width: 64ch; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
+
+/* ---------- before the open */
+.today { margin-top: 26px; border: 1px solid var(--ink); border-radius: 8px; background: var(--sheet); padding: 16px 18px 6px; }
+.today h2 { font: 600 13px/1.3 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.today h2 span { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-3); margin-left: 8px; }
+.today ol { list-style: none; margin: 10px 0 0; padding: 0; }
+.today li { display: grid; grid-template-columns: 110px 1fr; gap: 4px 16px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.today time { font: 600 13.5px/1.5 var(--mono); }
+.today b { font-weight: 600; }
+.today p { margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
+@media (max-width: 520px) { .today li { grid-template-columns: 1fr; } }
 
 /* ---------- key figures */
 .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-top: 30px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
@@ -281,6 +294,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
   <div class="wrap mast">
     <a class="brand" href="./">After the Bell<small>US market report · every trading day</small></a>
     <div class="edition">
+      <span class="kind" id="edition-kind"></span>
       <span class="date" id="edition-date">Loading…</span>
       <span id="edition-asof">Prices as of the 4:00 PM ET close</span>
       <span id="news-asof" hidden></span>
@@ -315,6 +329,10 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
       <h1 id="headline"></h1>
       <p class="lede" id="summary-text"></p>
       <div class="notice" id="no-news" hidden>The news step did not finish for this session, so this edition shows the technical scan without commentary.</div>
+      <div class="today" id="today" hidden>
+        <h2 id="today-h">Before the open<span id="today-sub"></span></h2>
+        <ol id="today-list"></ol>
+      </div>
       <dl class="figures" id="figures"></dl>
       <figure class="chart-card" id="breadth-figure">
         <div id="breadth-chart"></div>
@@ -485,7 +503,17 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
   applyTheme();
 
   // ---------- data loading
-  let current = null, index = null, pickFilter = "All", megaAll = false;
+  let current = null, index = null, pickFilter = "All", megaAll = false, session = "today";
+  const KIND = { premarket: "Pre-market", close: "Closing" };
+
+  function renderToday(r) {
+    const items = r.watchToday || [];
+    $("#today").hidden = !items.length;
+    $("#today-h").firstChild.textContent = r.edition === "premarket" ? "Before the open" : "Next session";
+    $("#today-sub").textContent = r.edition === "premarket" ? "What to watch on " + shortDate(r.date) + ". Times are Eastern." : "What to watch next. Times are Eastern.";
+    $("#today-list").replaceChildren(...items.map((w) => h("li", null, h("time", { text: w.time }),
+      h("div", null, h("b", { text: w.event }), w.why ? h("p", { text: w.why }) : null))));
+  }
 
   async function getJSON(path) {
     const res = await fetch(path, { cache: "no-cache" });
@@ -501,10 +529,12 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
       return;
     }
     const sel = $("#archive");
-    sel.replaceChildren(...index.dates.map((d, i) => h("option", { value: d, text: shortDate(d) + ", " + d.slice(0, 4) + (i === 0 ? " (latest)" : "") })));
+    const eds = index.editions || index.dates.map((d) => ({ id: d, date: d.slice(0, 10), kind: d.endsWith("-pre") ? "premarket" : "close" }));
+    sel.replaceChildren(...eds.map((e, i) => h("option", { value: e.id,
+      text: day(e.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " · " + KIND[e.kind] + (i === 0 ? " (latest)" : "") })));
     sel.addEventListener("change", () => load(sel.value, true));
     const wanted = new URLSearchParams(location.search).get("date");
-    load(index.dates.includes(wanted) ? wanted : index.latest, false);
+    load(eds.some((e) => e.id === wanted) ? wanted : index.latest, false);
   }
 
   async function load(date, push) {
@@ -528,9 +558,14 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
 
   // ---------- render
   function render(r) {
-    document.title = "After the Bell · " + shortDate(r.date);
+    const pre = r.edition === "premarket";
+    session = pre ? "last session" : "today";
+    document.title = "After the Bell · " + shortDate(r.date) + (pre ? " pre-market" : "");
+    $("#edition-kind").textContent = KIND[r.edition || "close"];
     $("#edition-date").textContent = longDate(r.date);
-    $("#lead-eyebrow").textContent = "Market report · " + longDate(r.date);
+    $("#edition-asof").textContent = "Prices as of the " + (r.asOf === r.date ? "4:00 PM ET" : shortDate(r.asOf)) + " close";
+    $("#lead-eyebrow").textContent = (pre ? "Pre-market report · " : "Closing report · ") + longDate(r.date);
+    renderToday(r);
     $("#headline").textContent = r.headline;
     $("#summary-text").textContent = r.summary;
     $("#no-news").hidden = r.newsAvailable;
@@ -550,7 +585,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     renderSources(r.sources);
     $("#method").textContent = "Method: each trading day a scan of " + r.universe.n + " stocks (the S&P 500 and S&P MidCap 400) computes trend, momentum, relative strength, ADX, MACD and accumulation from two years of daily prices, scores every stock from 0 to 100, and ranks sectors and industries. The news narrative is researched and written by Claude from the sources listed, and every number attached to a stock comes from the scan, not the narrative. Market data: Yahoo Finance; analyst targets and earnings dates: Yahoo Finance consensus.";
     const gen = new Date(r.generatedAt);
-    $("#updated").textContent = "This edition was generated " + gen.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) + ". A new edition is published automatically each weekday after the US close.";
+    $("#updated").textContent = "This edition was generated " + gen.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) + ". A pre-market edition is published automatically around 7:20 AM ET each trading day, about two hours before the open.";
   }
 
   function spark(values, w = 64, hgt = 16) {
@@ -578,8 +613,10 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
 
   function renderFigures(r) {
     const spx = r.market.spx, b = r.market.breadth, tnx = r.tape.find((t) => t.sym === "^TNX");
+    const es = r.edition === "premarket" ? r.tape.find((t) => t.sym === "ES=F") : null;
     const items = [
-      ["S&P 500", price(spx.close), [h("span", { class: dir(spx.d1), text: pct(spx.d1, 2) + " today" }), " · " + (spx.offHigh >= -0.05 ? "at its record" : pct(Math.abs(spx.offHigh)).replace("+", "") + " below its high")]],
+      es ? ["S&P 500 futures", price(es.value), [h("span", { class: dir(es.d1), text: pct(es.d1, 2) }), " vs. prior settle, at build time"]] : null,
+      ["S&P 500" + (r.edition === "premarket" ? " (last close)" : ""), price(spx.close), [h("span", { class: dir(spx.d1), text: pct(spx.d1, 2) + " " + session }), " · " + (spx.offHigh >= -0.05 ? "at its record" : pct(Math.abs(spx.offHigh)).replace("+", "") + " below its high")]],
       ["S&P 500 stocks above 50-day", b.sp500.above50 + "%", "MidCap 400: " + b.sp400.above50 + "%"],
       ["S&P 500 stocks above 200-day", b.sp500.above200 + "%", "MidCap 400: " + b.sp400.above200 + "%"],
       tnx ? ["10-year Treasury yield", tnx.value.toFixed(2) + "%", pct(tnx.r1m) + " over the past month"] : null,
@@ -781,7 +818,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
     return h("article", { class: "card", "data-sector": p.sector },
       h("div", { class: "card-top" },
         h("div", null, h("div", { class: "ticker", text: p.sym }), h("div", { class: "co", text: p.name })),
-        h("div", { class: "px" }, h("span", { class: "num", text: price(p.close) }), h("span", { class: "chg " + dir(p.r1d), text: pct(p.r1d, 2) + " today" }))),
+        h("div", { class: "px" }, h("span", { class: "num", text: price(p.close) }), h("span", { class: "chg " + dir(p.r1d), text: pct(p.r1d, 2) + " " + session }))),
       h("div", { class: "sector-line" }, setupChip(p.setup), h("span", { text: shortSector(p.sector) + " · " + p.industry })),
       p.thesis ? h("p", { class: "thesis", text: p.thesis }) : null,
       h("dl", { class: "metrics" },
@@ -815,7 +852,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
       const list = shown.filter((p) => p.tier === key);
       if (!list.length) return null;
       return h("div", null, h("div", { class: "tier-head" }, h("h3", { text: title + " (" + list.length + ")" }), h("p", { text: sub })),
-        h("div", { class: "cards" }, list.map((p) => card(p, r.asOf))));
+        h("div", { class: "cards" }, list.map((p) => card(p, r.date))));
     }));
   }
 
@@ -870,7 +907,7 @@ footer.site p { max-width: 80ch; margin: 0 0 10px; }
 
   function renderCalendar(r) {
     $("#cal-list").replaceChildren(...(r.calendar.length ? r.calendar.map((c) =>
-      h("li", { class: daysFrom(r.asOf, c.date) < 0 ? "past" : "" }, h("time", { datetime: c.date, text: calDate(c.date) }), h("span", { text: c.event })))
+      h("li", { class: daysFrom(r.date, c.date) < 0 ? "past" : "" }, h("time", { datetime: c.date, text: calDate(c.date) }), h("span", { text: c.event })))
       : [h("li", { class: "muted", text: "No calendar for this edition." })]));
   }
 

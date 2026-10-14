@@ -116,6 +116,8 @@ def validate(news, scored_syms):
         else:
             warns.append(f"watch {sym} dropped")
 
+    out["watchToday"] = [{"time": s(w.get("time"), 24), "event": s(w.get("event"), 100), "why": s(w.get("why"), 220)}
+                         for w in news.get("watchToday") or [] if s(w.get("event"), 100)][:8]
     out["featured"] = [int(n) for n in (news.get("featuredHeadlines") or [])
                        if isinstance(n, (int, float, str)) and str(n).isdigit()][:12]
     out["avoid"] = [{"name": s(a.get("name"), 60), "detail": s(a.get("detail"), 320)}
@@ -137,7 +139,11 @@ def main():
     ap.add_argument("--news")
     ap.add_argument("--no-news", action="store_true")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--edition", choices=["premarket", "close"], default="close")
+    ap.add_argument("--session", help="trading day the edition is for (pre-market: today; close: as_of)")
     a = ap.parse_args()
+    session = a.session or a.as_of
+    edition_id = f"{session}-pre" if a.edition == "premarket" else session
 
     work = ROOT / "work" / a.as_of
     tech = json.loads((work / "technicals.json").read_text())
@@ -181,7 +187,8 @@ def main():
     market = feed.get("market", [])
     chosen = [market[n - 1] for n in (news or {}).get("featured", []) if 1 <= n <= len(market)]
     if len(chosen) < 4:  # fallback: newest reputable items, balanced across topics
-        caps = {"Markets": 5, "Fed & rates": 3, "Earnings": 3, "Economy": 2, "Energy": 2, "Sectors": 2, "Commodities": 1}
+        caps = {"Markets": 4, "Pre-market": 3, "Fed & rates": 3, "Earnings": 3, "Economy": 2, "Energy": 2,
+                "Global": 2, "Sectors": 1, "Commodities": 1}
         used, chosen = {}, []
         for h_ in market:
             t = h_.get("topic")
@@ -198,7 +205,9 @@ def main():
     watch = [{**enrich(w["sym"]), "trigger": w["trigger"]} for w in (news or {}).get("watchlist", [])]
 
     report = {
-        "date": a.as_of, "asOf": tech["asOf"], "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "id": edition_id, "edition": a.edition, "date": session, "asOf": tech["asOf"],
+        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "watchToday": (news or {}).get("watchToday", []),
         "universe": tech["universe"], "newsAvailable": news is not None,
         "newsAsOf": feed.get("fetchedAt"), "headlines": headlines,
         "headline": (news or {}).get("headline") or "Technical scan only today",
@@ -213,13 +222,17 @@ def main():
         "screen": [] if news else sorted(tech["candidates"], key=lambda r: -r["score"])[:20],
     }
     DATA.mkdir(parents=True, exist_ok=True)
-    (DATA / f"{a.as_of}.json").write_text(json.dumps(report, separators=(",", ":")))
+    (DATA / f"{edition_id}.json").write_text(json.dumps(report, separators=(",", ":")))
     idx_path = DATA / "index.json"
-    idx = json.loads(idx_path.read_text()) if idx_path.exists() else {"dates": []}
-    dates = sorted(set(idx["dates"]) | {a.as_of}, reverse=True)
-    idx_path.write_text(json.dumps({"latest": dates[0], "dates": dates,
+    idx = json.loads(idx_path.read_text()) if idx_path.exists() else {}
+    eds = {e["id"]: e for e in idx.get("editions", [])}
+    for d in idx.get("dates", []):  # migrate the original date-only index
+        eds.setdefault(d, {"id": d, "date": d[:10], "kind": "premarket" if d.endswith("-pre") else "close"})
+    eds[edition_id] = {"id": edition_id, "date": session, "kind": a.edition}
+    editions = sorted(eds.values(), key=lambda e: (e["date"], e["kind"] == "close"), reverse=True)
+    idx_path.write_text(json.dumps({"latest": editions[0]["id"], "editions": editions, "dates": [e["id"] for e in editions],
                                     "updated": datetime.now(timezone.utc).isoformat(timespec="seconds")}, indent=1))
-    print(f"built {a.as_of}: {len(picks)} picks, {len(watch)} watch, news={news is not None}")
+    print(f"built {edition_id}: {len(picks)} picks, {len(watch)} watch, news={news is not None}")
 
 
 if __name__ == "__main__":

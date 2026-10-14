@@ -31,7 +31,9 @@ MARKET_QUERIES = [
     ("Markets", "stock market today"), ("Markets", "Wall Street stocks close"), ("Markets", "stock futures"),
     ("Fed & rates", "Federal Reserve interest rates"), ("Fed & rates", "Treasury yields"),
     ("Economy", "inflation jobs economic data"), ("Energy", "oil prices"), ("Commodities", "gold copper prices"),
-    ("Earnings", "earnings results shares after hours"), ("Sectors", "sector stocks rally slump"),
+    ("Earnings", "earnings results shares after hours"), ("Earnings", "earnings before the bell"),
+    ("Pre-market", "premarket movers stocks"), ("Global", "Asian European stock markets"),
+    ("Sectors", "sector stocks rally slump"),
 ]
 
 
