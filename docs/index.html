@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>After the Bell</title>
+<meta name="description" content="A daily US stock market report: the news behind the move, sector trends, and the stocks with the strongest technical setups. Updated after every close.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Layout: a broker's research note. Masthead and ticker tape on top, a sticky section index,
+   then one 1120px reading column in report order: lead, drivers, sectors, stocks, reference.
+   Dense tables scroll inside their own containers; the page body never scrolls sideways. */
+:root {
+  --paper: #f4f5f6;      /* page ground */
+  --sheet: #ffffff;      /* cards, tables, chart surface */
+  --ink: #0d1115;        /* primary text, primary marks */
+  --ink-2: #46505a;      /* secondary text */
+  --ink-3: #6f7983;      /* muted labels, axes */
+  --rule: #dde1e5;       /* hairlines */
+  --rule-2: #c3c9cf;     /* stronger hairlines, tracks */
+  --tape-bg: #0d1115; --tape-ink: #eef0f2; --tape-dim: #8d97a1; --tape-rule: #262d34;
+  --up: #08754c; --down: #bd3328; --warn: #8f5a00;
+  --up-wash: rgba(8, 117, 76, .09); --down-wash: rgba(189, 51, 40, .08);
+  --warn-wash: rgba(143, 90, 0, .10); --flat-wash: rgba(13, 17, 21, .06);
+  --series-1: #2a78d6; --series-2: #eb6834;
+  --grid: #e6e9ec; --axis: #c3c9cf;
+  --display: "Newsreader", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 4vw, 32px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0b0e11; --sheet: #12161a; --ink: #e6e9ec; --ink-2: #a8b1ba; --ink-3: #7b858f;
+    --rule: #222930; --rule-2: #343d46;
+    --tape-bg: #050608; --tape-ink: #e6e9ec; --tape-dim: #7c8691; --tape-rule: #1c2228;
+    --up: #3cc08c; --down: #f26b5f; --warn: #e3a43c;
+    --up-wash: rgba(60, 192, 140, .12); --down-wash: rgba(242, 107, 95, .12);
+    --warn-wash: rgba(227, 164, 60, .13); --flat-wash: rgba(230, 233, 236, .08);
+    --series-1: #3987e5; --series-2: #d95926; --grid: #1d242a; --axis: #343d46;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0b0e11; --sheet: #12161a; --ink: #e6e9ec; --ink-2: #a8b1ba; --ink-3: #7b858f;
+  --rule: #222930; --rule-2: #343d46;
+  --tape-bg: #050608; --tape-ink: #e6e9ec; --tape-dim: #7c8691; --tape-rule: #1c2228;
+  --up: #3cc08c; --down: #f26b5f; --warn: #e3a43c;
+  --up-wash: rgba(60, 192, 140, .12); --down-wash: rgba(242, 107, 95, .12);
+  --warn-wash: rgba(227, 164, 60, .13); --flat-wash: rgba(230, 233, 236, .08);
+  --series-1: #3987e5; --series-2: #d95926; --grid: #1d242a; --axis: #343d46;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 64px; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration-color: var(--rule-2); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; border-radius: 2px; }
+button, select { font: inherit; color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: var(--gutter); }
+.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--ink-3); }
+.muted { color: var(--ink-3); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- masthead */
+.masthead { background: var(--sheet); border-bottom: 1px solid var(--rule); }
+.mast { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; padding-block: 18px 14px; }
+.brand { font: 600 30px/1 var(--display); letter-spacing: -0.01em; text-decoration: none; }
+.brand small { display: block; margin-top: 6px; font: 500 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.edition { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; color: var(--ink-2); }
+.edition .date { font-weight: 600; color: var(--ink); }
+.control { display: inline-flex; align-items: center; gap: 6px; }
+.control label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+select, .btn {
+  height: 32px; padding: 0 10px; border: 1px solid var(--rule-2); border-radius: 6px;
+  background: var(--sheet); cursor: pointer; font-size: 13px;
+}
+.btn:hover, select:hover { border-color: var(--ink-3); }
+
+/* ---------- ticker tape */
+.tape { background: var(--tape-bg); color: var(--tape-ink); overflow-x: auto; scrollbar-width: none; }
+.tape::-webkit-scrollbar { display: none; }
+.tape ul { display: flex; margin: 0 auto; padding: 0 var(--gutter); list-style: none; max-width: 1120px; width: max-content; min-width: 100%; }
+.tape li { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: center; padding: 9px 16px; border-right: 1px solid var(--tape-rule); white-space: nowrap; }
+.tape li:first-child { padding-left: 0; }
+.tape li:last-child { border-right: 0; }
+.tape .t-label { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tape-dim); }
+.tape .t-val { font: 500 14px/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+.tape .t-chg { font: 500 12px/1.3 var(--mono); }
+.tape .t-chg.up { color: #4fd19c; } .tape .t-chg.down { color: #ff7a6e; } .tape .t-chg.flat { color: var(--tape-dim); }
+.tape svg { grid-column: 1 / -1; display: block; margin-top: 3px; }
+
+/* ---------- section index */
+.index-nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); border-bottom: 1px solid var(--rule); }
+.index-nav ul { display: flex; gap: 2px; margin: 0 auto; padding: 0 var(--gutter); max-width: 1120px; list-style: none; overflow-x: auto; scrollbar-width: none; }
+.index-nav ul::-webkit-scrollbar { display: none; }
+.index-nav a { display: block; padding: 11px 10px; font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; }
+.index-nav a:hover { color: var(--ink); border-bottom-color: var(--rule-2); }
+
+/* ---------- sections */
+main { padding-bottom: 48px; }
+section { padding-block: 44px 8px; }
+.eyebrow { margin: 0 0 10px; font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font: 500 clamp(30px, 4.4vw, 46px)/1.1 var(--display); letter-spacing: -0.015em; max-width: 24ch; }
+h2 { font: 500 clamp(24px, 3vw, 30px)/1.2 var(--display); letter-spacing: -0.01em; }
+h3 { font: 600 15px/1.35 var(--sans); }
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--ink); }
+.section-head p { margin: 0; max-width: 62ch; font-size: 14px; color: var(--ink-2); }
+.lede { margin: 18px 0 0; max-width: 64ch; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
+
+/* ---------- key figures */
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-top: 30px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.figure { padding: 16px 18px 16px 0; }
+.figure + .figure { padding-left: 18px; border-left: 1px solid var(--rule); }
+.figure dt { font-size: 12px; color: var(--ink-3); }
+.figure dd { margin: 4px 0 0; }
+.figure .big { font: 500 24px/1.2 var(--mono); }
+.figure .sub { display: block; margin-top: 3px; font-size: 12.5px; color: var(--ink-2); }
+@media (max-width: 760px) {
+  .figure, .figure + .figure { padding: 14px 0; border-left: 0; }
+  .figure + .figure { border-top: 1px solid var(--rule); }
+}
+
+/* ---------- chart */
+.chart-card { margin: 30px 0 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 18px 18px 12px; position: relative; }
+.chart-card figcaption { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; margin: 4px 0 2px; }
+.panel-head h3 { font-size: 13.5px; }
+.legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+.chart-svg { display: block; width: 100%; overflow: visible; touch-action: pan-y; }
+.chart-svg text { font: 11px var(--mono); fill: var(--ink-3); }
+.chart-tip {
+  position: absolute; pointer-events: none; z-index: 5; min-width: 168px;
+  background: var(--sheet); border: 1px solid var(--rule-2); border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .08); padding: 8px 10px; font-size: 12.5px;
+}
+.chart-tip .tip-date { color: var(--ink-3); font-size: 11.5px; margin-bottom: 4px; }
+.chart-tip .tip-row { display: grid; grid-template-columns: 14px auto 1fr; gap: 6px; align-items: center; }
+.chart-tip .tip-row b { font: 600 13px var(--mono); }
+.chart-tip .tip-row span:last-child { color: var(--ink-3); }
+.chart-tip i { width: 12px; height: 2px; display: block; border-radius: 1px; }
+details.data-view { margin-top: 8px; font-size: 13px; }
+details.data-view summary { cursor: pointer; color: var(--ink-2); }
+
+/* ---------- chips */
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.chip.pos { color: var(--up); background: var(--up-wash); }
+.chip.neg { color: var(--down); background: var(--down-wash); }
+.chip.warn { color: var(--warn); background: var(--warn-wash); }
+.chip.neu { color: var(--ink-2); background: var(--flat-wash); }
+.chip svg { width: 8px; height: 8px; fill: currentColor; }
+
+/* ---------- drivers */
+.drivers { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 36px; }
+.driver { padding: 20px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 8px; align-content: start; }
+.driver p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.refs { font-size: 12px; color: var(--ink-3); }
+.refs a { font-family: var(--mono); margin-right: 6px; }
+
+/* ---------- sectors */
+.sector-head, .sector { display: grid; grid-template-columns: minmax(170px, 1.35fr) 120px minmax(120px, 1fr) minmax(120px, 1fr) 70px 70px; gap: 6px 22px; align-items: center; }
+.sector-head { padding: 12px 0 8px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--rule); }
+.sector-head .r, .sector .r { text-align: right; }
+.sector { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.sector .name { font-weight: 600; }
+.sector .name .mono { margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.sector .note { grid-column: 1 / -1; margin: 2px 0 0; font-size: 14px; color: var(--ink-2); max-width: 90ch; }
+.sector .leaders { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-3); }
+.sector .leaders .mono { color: var(--ink); margin-right: 8px; font-weight: 500; }
+.meter { display: grid; grid-template-columns: 1fr 40px; gap: 8px; align-items: center; }
+.meter .track { position: relative; height: 6px; border-radius: 3px; background: var(--grid); }
+.meter .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ink-2); }
+.meter .mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--rule-2); }
+.meter .val { font: 500 13px var(--mono); text-align: right; }
+.m-label { display: none; font-size: 11.5px; color: var(--ink-3); }
+@media (max-width: 760px) {
+  .sector-head { display: none; }
+  .sector { grid-template-columns: 1fr 1fr; }
+  .sector .name { grid-column: 1; }
+  .sector .stance { grid-column: 2; justify-self: end; }
+  .sector .m-cell, .sector .ret { grid-column: span 1; }
+  .sector .ret { text-align: left; }
+  .m-label { display: block; }
+}
+
+/* ---------- stock cards */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 6px; }
+.filters button { height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid var(--rule-2); background: transparent; font-size: 13px; cursor: pointer; color: var(--ink-2); }
+.filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+.tier-head { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 12px; }
+.tier-head p { margin: 0; font-size: 13.5px; color: var(--ink-3); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.card { min-width: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 16px 14px; display: grid; gap: 10px; align-content: start; }
+.card-top { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.ticker { font: 600 19px/1.1 var(--mono); letter-spacing: .01em; }
+.co { margin-top: 3px; font-size: 13px; color: var(--ink-2); }
+.px { text-align: right; }
+.px .num { display: block; font-size: 16px; font-weight: 500; }
+.px .chg { font-size: 12.5px; font-family: var(--mono); }
+.sector-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: var(--ink-3); }
+.thesis { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 12px; margin: 0; padding: 12px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.metrics div { min-width: 0; }
+.metrics dt { font-size: 11px; color: var(--ink-3); }
+.metrics dd { margin: 2px 0 0; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.metrics dd small { font-size: 11.5px; color: var(--ink-3); font-weight: 400; }
+.rs-bar { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--grid); position: relative; }
+.rs-bar span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--ink); }
+.card-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
+.card-foot b { font-weight: 600; color: var(--ink); }
+
+/* ---------- tables */
+.table-scroll { overflow-x: auto; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 11.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 10px 12px 8px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .sym { font: 600 14px var(--mono); }
+td .co { margin-top: 1px; font-size: 12.5px; }
+.wide-trigger { min-width: 260px; color: var(--ink-2); }
+.more { margin-top: 12px; }
+
+/* ---------- avoid / risks / calendar */
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 0 44px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 14px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 18px 1fr; gap: 10px; }
+.list .mark { width: 10px; height: 10px; margin-top: 7px; }
+.list .mark.neg { fill: var(--down); } .list .mark.warn { fill: var(--warn); }
+.list b { display: block; font-weight: 600; }
+.list span.d { color: var(--ink-2); font-size: 14.5px; }
+.cal li { grid-template-columns: 96px 1fr; }
+.cal time { font: 500 13px/1.6 var(--mono); color: var(--ink); }
+.cal .past time { color: var(--ink-3); }
+
+/* ---------- industries */
+.ind-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 8px 44px; margin-top: 18px; }
+.ind-grid h3 { margin-bottom: 4px; }
+
+/* ---------- glossary + footer */
+.glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 0 36px; margin: 0; }
+.glossary div { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.glossary dt { font-weight: 600; }
+.glossary dd { margin: 4px 0 0; color: var(--ink-2); font-size: 14.5px; }
+.sources { margin: 12px 0 0; padding-left: 28px; font-size: 13.5px; color: var(--ink-2); columns: 2 360px; column-gap: 40px; }
+.sources li { margin-bottom: 6px; break-inside: avoid; }
+.sources li::marker { font-family: var(--mono); color: var(--ink-3); }
+.sources .host { color: var(--ink-3); margin-left: 4px; }
+footer.site { margin-top: 40px; padding-block: 28px 40px; border-top: 1px solid var(--ink); font-size: 13px; color: var(--ink-2); }
+footer.site p { max-width: 80ch; margin: 0 0 10px; }
+
+/* ---------- states */
+.state { padding: 60px 0; color: var(--ink-2); font-size: 16px; }
+.notice { margin-top: 18px; padding: 12px 14px; border-radius: 6px; background: var(--warn-wash); color: var(--ink); font-size: 14px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap mast">
+    <a class="brand" href="./">After the Bell<small>US market report · every trading day</small></a>
+    <div class="edition">
+      <span class="date" id="edition-date">Loading…</span>
+      <span id="edition-asof">Data as of the 4:00 PM ET close</span>
+      <span class="control"><label for="archive">Edition</label><select id="archive" aria-label="Choose a report date"></select></span>
+      <button class="btn" id="theme-btn" type="button" aria-label="Change color theme">Theme: Auto</button>
+    </div>
+  </div>
+  <div class="tape" role="region" aria-label="Market tape"><ul id="tape"></ul></div>
+</header>
+<nav class="index-nav" aria-label="Sections">
+  <ul>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#drivers">What's moving</a></li>
+    <li><a href="#sectors">Sectors</a></li>
+    <li><a href="#stocks">Stocks to watch</a></li>
+    <li><a href="#watchlist">Watchlist</a></li>
+    <li><a href="#avoid">Avoid</a></li>
+    <li><a href="#industries">Industries</a></li>
+    <li><a href="#megacaps">Largest companies</a></li>
+    <li><a href="#calendar">Calendar</a></li>
+    <li><a href="#glossary">How to read</a></li>
+  </ul>
+</nav>
+
+<main class="wrap" id="report">
+  <div class="state" id="state">Loading the latest report…</div>
+
+  <div id="content" hidden>
+    <section id="summary" aria-labelledby="headline">
+      <p class="eyebrow" id="lead-eyebrow">Market report</p>
+      <h1 id="headline"></h1>
+      <p class="lede" id="summary-text"></p>
+      <div class="notice" id="no-news" hidden>The news step did not finish for this session, so this edition shows the technical scan without commentary.</div>
+      <dl class="figures" id="figures"></dl>
+      <figure class="chart-card" id="breadth-figure">
+        <div id="breadth-chart"></div>
+        <figcaption id="breadth-caption"></figcaption>
+        <details class="data-view"><summary>Chart data</summary><div class="table-scroll" id="breadth-table"></div></details>
+      </figure>
+    </section>
+
+    <section id="drivers" aria-labelledby="drivers-h">
+      <div class="section-head"><h2 id="drivers-h">What's moving markets</h2><p>The news behind today's tape, with sources.</p></div>
+      <div class="drivers" id="driver-list"></div>
+    </section>
+
+    <section id="sectors" aria-labelledby="sectors-h">
+      <div class="section-head"><h2 id="sectors-h">Sector scorecard</h2><p>All 11 sectors, ranked by the median technical score of their stocks. Bars show the share of each sector's stocks trading above their 50-day and 200-day averages.</p></div>
+      <div class="sector-head" aria-hidden="true"><span>Sector</span><span>Stance</span><span>Above 50-day</span><span>Above 200-day</span><span class="r">1M</span><span class="r">3M</span></div>
+      <div id="sector-list"></div>
+    </section>
+
+    <section id="stocks" aria-labelledby="stocks-h">
+      <div class="section-head"><h2 id="stocks-h">Stocks positioned for growth</h2><p>Names passing at least 7 of 8 uptrend tests, checked against the news. Each card shows the setup, a risk line where the idea is wrong, and the next earnings date.</p></div>
+      <div class="filters" id="pick-filters" role="group" aria-label="Filter by sector"></div>
+      <div id="pick-groups"></div>
+    </section>
+
+    <section id="watchlist" aria-labelledby="watch-h">
+      <div class="section-head"><h2 id="watch-h">Watchlist</h2><p>Strong stocks that are not actionable yet, and what would change that.</p></div>
+      <div class="table-scroll" id="watch-table"></div>
+    </section>
+
+    <section id="avoid" aria-labelledby="avoid-h">
+      <div class="two-col">
+        <div>
+          <div class="section-head"><h2 id="avoid-h">Avoid for now</h2></div>
+          <ul class="list" id="avoid-list"></ul>
+        </div>
+        <div>
+          <div class="section-head"><h2>Key risks</h2></div>
+          <ul class="list" id="risk-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="industries" aria-labelledby="ind-h">
+      <div class="section-head"><h2 id="ind-h">Industry trends</h2><p>Theme ETFs ranked by 3-month return, then the strongest and weakest industries inside the index.</p></div>
+      <div class="table-scroll" id="theme-table"></div>
+      <div class="ind-grid">
+        <div><h3>Strongest industries</h3><div class="table-scroll" id="ind-top"></div></div>
+        <div><h3>Weakest industries</h3><div class="table-scroll" id="ind-bottom"></div></div>
+      </div>
+    </section>
+
+    <section id="megacaps" aria-labelledby="mega-h">
+      <div class="section-head"><h2 id="mega-h">Largest companies at a glance</h2><p>Where the market's heavyweights stand technically, ranked by composite score.</p></div>
+      <div class="table-scroll" id="mega-table"></div>
+      <button class="btn more" id="mega-more" type="button">Show all</button>
+    </section>
+
+    <section id="calendar" aria-labelledby="cal-h">
+      <div class="section-head"><h2 id="cal-h">Coming up</h2><p>Dated events that could move the stocks above.</p></div>
+      <ul class="list cal" id="cal-list"></ul>
+    </section>
+
+    <section id="glossary" aria-labelledby="gloss-h">
+      <div class="section-head"><h2 id="gloss-h">How to read this report</h2></div>
+      <dl class="glossary">
+        <div><dt>Trend tests (out of 8)</dt><dd>Eight checks of a healthy uptrend: price above its rising 50-, 150- and 200-day averages, those averages stacked in order, at least 30% above the 52-week low, within 25% of the 52-week high, and stronger than most stocks. 7 or 8 means a clean uptrend.</dd></div>
+        <div><dt>Relative strength (RS)</dt><dd>A 1–99 rank of how a stock has performed against all ~900 stocks scanned over 3, 6, 9 and 12 months, weighted toward the latest quarter. 90 means it beat 90% of them.</dd></div>
+        <div><dt>RSI</dt><dd>A 0–100 momentum gauge over 14 days. Above 70 is stretched (overbought); below 30 is washed out (oversold); 50–70 is healthy strength.</dd></div>
+        <div><dt>ADX</dt><dd>Trend strength, regardless of direction. Under 20 is a range; above 25 is a real trend; above 40 is a strong one.</dd></div>
+        <div><dt>50-day and 200-day averages</dt><dd>The average closing price over the last 50 and 200 sessions. Traders treat the 50-day as the medium-term trend and the 200-day as the long-term trend.</dd></div>
+        <div><dt>Risk line</dt><dd>The level where the setup is wrong: the 50-day average or 2.5 times the stock's average daily range below the close, whichever is closer. Not a prediction, just a line to plan around.</dd></div>
+        <div><dt>Buy zone vs. Wait</dt><dd>Buy zone: the trend is intact and the price is not stretched. Wait: the trend is strong but the price has run far above its 50-day or RSI is high, so a pullback offers a better entry.</dd></div>
+        <div><dt>Breadth</dt><dd>The share of stocks above their moving averages. When the index rises but breadth falls, fewer stocks are carrying the market, which tends to make rallies fragile.</dd></div>
+        <div><dt>Stance</dt><dd>Overweight, Neutral or Underweight: whether a sector's technical health and news backdrop argue for more, average or less exposure than its weight in the index.</dd></div>
+      </dl>
+    </section>
+
+    <section id="sources-sec" aria-labelledby="src-h">
+      <div class="section-head"><h2 id="src-h">Sources</h2></div>
+      <ol class="sources" id="source-list"></ol>
+    </section>
+  </div>
+
+  <footer class="site">
+    <p id="method"></p>
+    <p>For information and education only. Not investment advice. Technical signals describe probabilities, not certainties, and news can override any chart. Do your own research before you trade.</p>
+    <p id="updated" class="muted"></p>
+  </footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const SVG = "http://www.w3.org/2000/svg";
+
+  // DOM helper: strings become text nodes, never markup.
+  function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k === "style") el.setAttribute("style", v);
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  function s(tag, attrs, ...kids) {
+    const el = document.createElementNS(SVG, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v != null) el.setAttribute(k, v);
+    for (const kid of kids.flat()) if (kid != null) el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return el;
+  }
+
+  // ---------- formatting
+  const nf = (d) => new Intl.NumberFormat("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const nf2 = nf(2), nf0 = nf(0);
+  const price = (v) => v == null ? "—" : nf2.format(v);
+  const sign = (v) => v > 0 ? "+" : v < 0 ? "−" : "";
+  const pct = (v, d = 1) => v == null ? "—" : sign(Number(v.toFixed(d))) + Math.abs(v).toFixed(d) + "%";
+  const dir = (v) => v == null || Math.abs(v) < 0.005 ? "flat" : v > 0 ? "up" : "down";
+  const day = (d) => { const [y, m, dd] = d.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, dd); };
+  const longDate = (d) => day(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const shortDate = (d) => day(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const calDate = (d) => day(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const daysFrom = (a, b) => Math.round((day(b) - day(a)) / 864e5);
+  const RATING = { strong_buy: "Strong buy", buy: "Buy", hold: "Hold", underperform: "Underperform", sell: "Sell", none: "No rating" };
+  const SECTOR_SHORT = { "Information Technology": "Technology", "Communication Services": "Communication", "Consumer Discretionary": "Discretionary", "Consumer Staples": "Staples" };
+  const shortSector = (n) => SECTOR_SHORT[n] || n;
+  const safeUrl = (u) => /^https?:\/\//i.test(u || "") ? u : null;
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+
+  function shape(kind) { // direction glyph so state never relies on color alone
+    const paths = { up: "M4 0 8 8H0Z", down: "M0 0h8L4 8Z", flat: "M0 3h8v2H0Z", dot: "M4 0a4 4 0 1 0 0 8a4 4 0 1 0 0-8Z" };
+    return s("svg", { viewBox: "0 0 8 8", "aria-hidden": "true" }, s("path", { d: paths[kind] }));
+  }
+  function chip(text, tone, glyph) { return h("span", { class: "chip " + tone }, glyph ? shape(glyph) : null, text); }
+  const stanceChip = (st) => st === "Overweight" ? chip("Overweight", "pos", "up") : st === "Underweight" ? chip("Underweight", "neg", "down") : st ? chip("Neutral", "neu", "flat") : null;
+  const setupChip = (st) => ({ Leader: chip("Leader", "pos", "up"), Extended: chip("Extended", "warn", "dot"), Emerging: chip("Emerging", "neu", "up"), Downtrend: chip("Downtrend", "neg", "down") }[st] || chip(st || "Neutral", "neu", "flat"));
+
+  // ---------- theme toggle (per-viewer convenience only)
+  const THEMES = ["auto", "light", "dark"];
+  let theme = "auto";
+  try { theme = localStorage.getItem("atb-theme") || "auto"; } catch {}
+  function applyTheme() {
+    if (theme === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", theme);
+    $("#theme-btn").textContent = "Theme: " + theme[0].toUpperCase() + theme.slice(1);
+  }
+  $("#theme-btn").addEventListener("click", () => {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % 3];
+    try { localStorage.setItem("atb-theme", theme); } catch {}
+    applyTheme();
+    if (current) renderChart(current.market.series);
+  });
+  applyTheme();
+
+  // ---------- data loading
+  let current = null, index = null, pickFilter = "All", megaAll = false;
+
+  async function getJSON(path) {
+    const res = await fetch(path, { cache: "no-cache" });
+    if (!res.ok) throw new Error(path + " returned " + res.status);
+    return res.json();
+  }
+
+  async function boot() {
+    try {
+      index = await getJSON("data/index.json");
+    } catch (e) {
+      $("#state").textContent = "The report index could not be loaded. Refresh the page; if it persists, the next update will restore it.";
+      return;
+    }
+    const sel = $("#archive");
+    sel.replaceChildren(...index.dates.map((d, i) => h("option", { value: d, text: shortDate(d) + ", " + d.slice(0, 4) + (i === 0 ? " (latest)" : "") })));
+    sel.addEventListener("change", () => load(sel.value, true));
+    const wanted = new URLSearchParams(location.search).get("date");
+    load(index.dates.includes(wanted) ? wanted : index.latest, false);
+  }
+
+  async function load(date, push) {
+    const content = $("#content");
+    content.style.opacity = current ? "0.5" : "";
+    try {
+      const rep = await getJSON("data/" + date + ".json");
+      current = rep;
+      $("#archive").value = date;
+      if (push) history.replaceState(null, "", date === index.latest ? location.pathname : "?date=" + date);
+      render(rep);
+      $("#state").hidden = true;
+      content.hidden = false;
+    } catch (e) {
+      $("#state").hidden = false;
+      $("#state").textContent = "The report for " + date + " could not be loaded. Pick another edition or refresh.";
+    } finally {
+      content.style.opacity = "";
+    }
+  }
+
+  // ---------- render
+  function render(r) {
+    document.title = "After the Bell · " + shortDate(r.date);
+    $("#edition-date").textContent = longDate(r.date);
+    $("#lead-eyebrow").textContent = "Market report · " + longDate(r.date);
+    $("#headline").textContent = r.headline;
+    $("#summary-text").textContent = r.summary;
+    $("#no-news").hidden = r.newsAvailable;
+    renderTape(r.tape);
+    renderFigures(r);
+    renderChart(r.market.series);
+    renderDrivers(r);
+    renderSectors(r.sectors);
+    renderPicks(r);
+    renderWatch(r.watchlist);
+    renderList("#avoid-list", r.avoid.map((a) => ({ title: a.name, body: a.detail })), "neg", "down");
+    renderList("#risk-list", r.risks, "warn", "dot");
+    renderThemes(r);
+    renderMega(r.megacaps);
+    renderCalendar(r);
+    renderSources(r.sources);
+    $("#method").textContent = "Method: each trading day a scan of " + r.universe.n + " stocks (the S&P 500 and S&P MidCap 400) computes trend, momentum, relative strength, ADX, MACD and accumulation from two years of daily prices, scores every stock from 0 to 100, and ranks sectors and industries. The news narrative is researched and written by Claude from the sources listed, and every number attached to a stock comes from the scan, not the narrative. Market data: Yahoo Finance; analyst targets and earnings dates: Yahoo Finance consensus.";
+    const gen = new Date(r.generatedAt);
+    $("#updated").textContent = "This edition was generated " + gen.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) + ". A new edition is published automatically each weekday after the US close.";
+  }
+
+  function spark(values, w = 64, hgt = 16) {
+    if (!values || values.length < 2) return null;
+    const lo = Math.min(...values), hi = Math.max(...values), rng = hi - lo || 1;
+    const pts = values.map((v, i) => [(i / (values.length - 1)) * (w - 4) + 2, hgt - 2 - ((v - lo) / rng) * (hgt - 4)]);
+    const last = pts[pts.length - 1];
+    return s("svg", { width: w, height: hgt, viewBox: `0 0 ${w} ${hgt}`, "aria-hidden": "true" },
+      s("polyline", { points: pts.map((p) => p.map((n) => n.toFixed(1)).join(",")).join(" "), fill: "none", stroke: "currentColor", "stroke-width": 1.25, "stroke-linejoin": "round", "stroke-linecap": "round", opacity: 0.6 }),
+      s("circle", { cx: last[0], cy: last[1], r: 2, fill: "currentColor" }));
+  }
+
+  function renderTape(tape) {
+    $("#tape").replaceChildren(...tape.map((t) => {
+      const val = t.unit === "%" ? t.value.toFixed(2) + "%" : (t.unit === "$" ? "$" : "") + price(t.value);
+      const sp = spark(t.spark);
+      if (sp) sp.style.color = "var(--tape-dim)";
+      return h("li", { title: t.label + ": " + pct(t.r1m) + " over the past month" },
+        h("span", { class: "t-label", text: t.label }),
+        h("span", { class: "t-val", text: val }),
+        h("span", { class: "t-chg " + dir(t.d1), text: pct(t.d1, 2) }),
+        sp);
+    }));
+  }
+
+  function renderFigures(r) {
+    const spx = r.market.spx, b = r.market.breadth, tnx = r.tape.find((t) => t.sym === "^TNX");
+    const items = [
+      ["S&P 500", price(spx.close), [h("span", { class: dir(spx.d1), text: pct(spx.d1, 2) + " today" }), " · " + (spx.offHigh >= -0.05 ? "at its record" : pct(Math.abs(spx.offHigh)).replace("+", "") + " below its high")]],
+      ["S&P 500 stocks above 50-day", b.sp500.above50 + "%", "MidCap 400: " + b.sp400.above50 + "%"],
+      ["S&P 500 stocks above 200-day", b.sp500.above200 + "%", "MidCap 400: " + b.sp400.above200 + "%"],
+      tnx ? ["10-year Treasury yield", tnx.value.toFixed(2) + "%", pct(tnx.r1m) + " over the past month"] : null,
+      r.fed && r.fed.rate ? ["Fed funds target", r.fed.rate, r.fed.next ? "Next decision " + r.fed.next : ""] : null,
+    ].filter(Boolean);
+    $("#figures").replaceChildren(...items.map(([label, val, sub]) =>
+      h("div", { class: "figure" }, h("dt", { text: label }), h("dd", null, h("span", { class: "big", text: val }), h("span", { class: "sub" }, sub)))));
+  }
+
+  // ---------- breadth chart: two panels on one time axis (never a dual axis)
+  function niceTicks(lo, hi, count) {
+    const raw = (hi - lo) / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((x) => x >= raw);
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+    return out;
+  }
+  function luminance(hex) {
+    const c = hex.replace("#", "").match(/../g).map((x) => { const v = parseInt(x, 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  let chartRO = null;
+  function renderChart(series) {
+    const host = $("#breadth-chart");
+    host.replaceChildren();
+    $("#breadth-figure").querySelectorAll(".chart-tip").forEach((n) => n.remove());
+    const W = Math.max(280, host.clientWidth);
+    const n = series.dates.length, padL = 4, padR = 62;
+    const plotW = W - padL - padR;
+    const x = (i) => padL + plotW * i / (n - 1);
+    const c1 = cssVar("--series-1"), c2 = cssVar("--series-2"), ink = cssVar("--ink"), sheet = cssVar("--sheet");
+
+    function tag(svg, yPos, text, fill) {
+      const w = text.length * 6.8 + 10, txtFill = luminance(fill) > 0.32 ? "#0d1115" : "#ffffff";
+      svg.append(s("rect", { x: W - padR + 4, y: yPos - 9, width: w, height: 18, rx: 3, fill }),
+        s("text", { x: W - padR + 9, y: yPos + 4, style: `fill:${txtFill};font-weight:600` }, text));
+    }
+    function hline(svg, yPos, label, strong) {
+      svg.append(s("line", { x1: padL, x2: W - padR, y1: yPos, y2: yPos, stroke: strong ? cssVar("--axis") : cssVar("--grid"), "stroke-width": 1 }));
+      if (label != null) svg.append(s("text", { x: W - padR + 8, y: yPos + 4 }, label));
+    }
+    const path = (vals, y) => vals.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)).join("");
+
+    // Panel 1: S&P 500
+    const H1 = 170, top1 = 6, bot1 = H1 - 6;
+    let lo = Math.min(...series.spx), hi = Math.max(...series.spx);
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const y1 = (v) => bot1 - (bot1 - top1) * (v - lo) / (hi - lo);
+    const svg1 = s("svg", { class: "chart-svg", width: W, height: H1, viewBox: `0 0 ${W} ${H1}`, role: "img", "aria-label": "S&P 500 index over the last six months" });
+    niceTicks(lo, hi, 4).forEach((t) => hline(svg1, y1(t), nf0.format(t)));
+    const lineD = path(series.spx, y1);
+    svg1.append(s("path", { d: lineD + `L${x(n - 1).toFixed(1)} ${bot1}L${x(0)} ${bot1}Z`, fill: ink, opacity: 0.07 }));
+    svg1.append(s("path", { d: lineD, fill: "none", stroke: ink, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const lastY1 = y1(series.spx[n - 1]);
+    svg1.append(s("circle", { cx: x(n - 1), cy: lastY1, r: 4, fill: ink, stroke: sheet, "stroke-width": 2 }));
+    tag(svg1, lastY1, nf0.format(series.spx[n - 1]), ink);
+
+    // Panel 2: breadth, 0-100%
+    const H2 = 150, top2 = 8, bot2 = H2 - 22;
+    const y2 = (v) => bot2 - (bot2 - top2) * v / 100;
+    const svg2 = s("svg", { class: "chart-svg", width: W, height: H2, viewBox: `0 0 ${W} ${H2}`, role: "img", "aria-label": "Share of stocks above their 50-day and 200-day averages over the last six months" });
+    [0, 25, 50, 75, 100].forEach((t) => hline(svg2, y2(t), t + "%", t === 50 || t === 0));
+    svg2.append(s("path", { d: path(series.above200, y2), fill: "none", stroke: c2, "stroke-width": 2, "stroke-linejoin": "round" }));
+    svg2.append(s("path", { d: path(series.above50, y2), fill: "none", stroke: c1, "stroke-width": 2, "stroke-linejoin": "round" }));
+    let ya = y2(series.above50[n - 1]), yb = y2(series.above200[n - 1]);
+    [[ya, c1], [yb, c2]].forEach(([yy, col]) => svg2.append(s("circle", { cx: x(n - 1), cy: yy, r: 4, fill: col, stroke: sheet, "stroke-width": 2 })));
+    if (Math.abs(ya - yb) < 19) { const mid = (ya + yb) / 2, dirn = ya < yb ? -1 : 1; ya = mid + dirn * 9.5; yb = mid - dirn * 9.5; }
+    tag(svg2, ya, series.above50[n - 1].toFixed(0) + "%", c1);
+    tag(svg2, yb, series.above200[n - 1].toFixed(0) + "%", c2);
+    // month ticks
+    let prevM = null;
+    series.dates.forEach((d, i) => {
+      const m = d.slice(5, 7);
+      if (prevM !== null && m !== prevM && x(i) < W - padR - 20) {
+        svg2.append(s("line", { x1: x(i), x2: x(i), y1: bot2, y2: bot2 + 4, stroke: cssVar("--axis") }),
+          s("text", { x: x(i) + 3, y: bot2 + 16 }, day(d).toLocaleDateString("en-US", { month: "short" })));
+      }
+      prevM = m;
+    });
+
+    const head1 = h("div", { class: "panel-head" }, h("h3", { text: "S&P 500 index" }));
+    const head2 = h("div", { class: "panel-head" }, h("h3", { text: "Share of S&P 500 and MidCap 400 stocks above their averages" }),
+      h("div", { class: "legend" }, h("span", null, h("i", { style: `background:${c1}` }), "Above 50-day"), h("span", null, h("i", { style: `background:${c2}` }), "Above 200-day")));
+    host.append(head1, svg1, head2, svg2);
+
+    // crosshair + tooltip shared by both panels
+    const cross = [svg1, svg2].map((sv) => { const l = s("line", { y1: 0, y2: sv === svg1 ? H1 : bot2, stroke: cssVar("--ink-3"), "stroke-width": 1, visibility: "hidden" }); sv.append(l); return l; });
+    const dots = [s("circle", { r: 4, fill: ink, stroke: sheet, "stroke-width": 2, visibility: "hidden" })];
+    svg1.append(dots[0]);
+    dots.push(s("circle", { r: 4, fill: c1, stroke: sheet, "stroke-width": 2, visibility: "hidden" }), s("circle", { r: 4, fill: c2, stroke: sheet, "stroke-width": 2, visibility: "hidden" }));
+    svg2.append(dots[1], dots[2]);
+    const tip = h("div", { class: "chart-tip", hidden: true, role: "status" });
+    $("#breadth-figure").append(tip);
+    let idx = n - 1;
+    function show(i) {
+      idx = Math.max(0, Math.min(n - 1, i));
+      const xx = x(idx);
+      cross.forEach((l) => { l.setAttribute("x1", xx); l.setAttribute("x2", xx); l.setAttribute("visibility", "visible"); });
+      [[dots[0], y1(series.spx[idx])], [dots[1], y2(series.above50[idx])], [dots[2], y2(series.above200[idx])]].forEach(([d, yy]) => { d.setAttribute("cx", xx); d.setAttribute("cy", yy); d.setAttribute("visibility", "visible"); });
+      const row = (color, val, label) => h("div", { class: "tip-row" }, h("i", { style: `background:${color}` }), h("b", { text: val }), h("span", { text: label }));
+      tip.replaceChildren(h("div", { class: "tip-date", text: longDate(series.dates[idx]) }),
+        row(ink, nf2.format(series.spx[idx]), "S&P 500"), row(c1, series.above50[idx].toFixed(1) + "%", "above 50-day"), row(c2, series.above200[idx].toFixed(1) + "%", "above 200-day"));
+      tip.hidden = false;
+      const fig = $("#breadth-figure").getBoundingClientRect(), hb = host.getBoundingClientRect();
+      const left = hb.left - fig.left + xx;
+      tip.style.left = Math.min(Math.max(left + 14, 8), fig.width - tip.offsetWidth - 8) + (left + 14 + tip.offsetWidth > fig.width - 8 ? -tip.offsetWidth - 28 : 0) + "px";
+      tip.style.top = (svg1.getBoundingClientRect().top - fig.top + 10) + "px";
+    }
+    function hide() { cross.forEach((l) => l.setAttribute("visibility", "hidden")); dots.forEach((d) => d.setAttribute("visibility", "hidden")); tip.hidden = true; }
+    [svg1, svg2].forEach((sv) => {
+      sv.addEventListener("pointermove", (e) => { const b = sv.getBoundingClientRect(); show(Math.round((e.clientX - b.left - padL) / plotW * (n - 1))); });
+      sv.addEventListener("pointerleave", hide);
+    });
+    svg1.setAttribute("tabindex", "0");
+    svg1.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { show(idx - 1); e.preventDefault(); }
+      else if (e.key === "ArrowRight") { show(idx + 1); e.preventDefault(); }
+      else if (e.key === "Escape") hide();
+    });
+    svg1.addEventListener("focus", () => show(idx));
+    svg1.addEventListener("blur", hide);
+
+    const last50 = series.above50[n - 1], spxOff = current ? current.market.spx.offHigh : 0;
+    $("#breadth-caption").textContent = "Last six months. The index is " + (spxOff >= -1 ? "near its record" : Math.abs(spxOff).toFixed(1) + "% below its high") +
+      " while " + last50.toFixed(0) + "% of stocks trade above their 50-day average. Hover or focus the chart and use the arrow keys to read any day.";
+
+    // table view (weekly samples)
+    const rows = [];
+    for (let i = n - 1; i >= 0; i -= 5) rows.push(h("tr", null, h("td", { text: shortDate(series.dates[i]) }), h("td", { class: "n", text: nf2.format(series.spx[i]) }), h("td", { class: "n", text: series.above50[i].toFixed(1) + "%" }), h("td", { class: "n", text: series.above200[i].toFixed(1) + "%" })));
+    $("#breadth-table").replaceChildren(h("table", null, h("thead", null, h("tr", null, h("th", { text: "Date" }), h("th", { class: "n", text: "S&P 500" }), h("th", { class: "n", text: "Above 50-day" }), h("th", { class: "n", text: "Above 200-day" }))), h("tbody", null, rows)));
+
+    if (!chartRO) {
+      let lastW = host.clientWidth, raf = 0;
+      chartRO = new ResizeObserver(() => {
+        if (Math.abs(host.clientWidth - lastW) < 2) return;
+        lastW = host.clientWidth; cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => current && renderChart(current.market.series));
+      });
+      chartRO.observe(host);
+    }
+  }
+
+  function refLinks(refs, sources) {
+    const ok = (refs || []).filter((n) => sources[n - 1]);
+    if (!ok.length) return null;
+    return h("div", { class: "refs" }, "Sources ", ok.map((n) => h("a", { href: "#src-" + n, text: "[" + n + "]" })));
+  }
+
+  function renderDrivers(r) {
+    const tone = { tailwind: chip("Tailwind", "pos", "up"), headwind: chip("Headwind", "neg", "down"), mixed: chip("Mixed", "warn", "dot") };
+    $("#driver-list").replaceChildren(...(r.drivers.length ? r.drivers.map((d) =>
+      h("article", { class: "driver" }, h("div", null, tone[d.tone] || tone.mixed), h("h3", { text: d.title }), h("p", { text: d.body }), refLinks(d.sources, r.sources)))
+      : [h("p", { class: "muted", text: "No news summary for this edition." })]));
+  }
+
+  function meter(v, label) {
+    return h("div", { class: "m-cell" }, h("span", { class: "m-label", text: label }),
+      h("div", { class: "meter", role: "img", "aria-label": label + ": " + v + "%" },
+        h("div", { class: "track" }, h("div", { class: "fill", style: `width:${Math.max(0, Math.min(100, v))}%` }), h("div", { class: "mid" })),
+        h("span", { class: "val", text: v + "%" })));
+  }
+  function renderSectors(sectors) {
+    $("#sector-list").replaceChildren(...sectors.map((x) =>
+      h("div", { class: "sector" },
+        h("div", { class: "name" }, shortSector(x.name), h("span", { class: "mono", text: x.etf })),
+        h("div", { class: "stance" }, stanceChip(x.stance)),
+        meter(x.above50, "Above 50-day"), meter(x.above200, "Above 200-day"),
+        h("div", { class: "ret r" }, h("span", { class: "m-label", text: "1 month" }), h("span", { class: "num " + dir(x.r1m), text: pct(x.r1m) })),
+        h("div", { class: "ret r" }, h("span", { class: "m-label", text: "3 months" }), h("span", { class: "num " + dir(x.r3m), text: pct(x.r3m) })),
+        x.note ? h("p", { class: "note", text: x.note }) : null,
+        x.topSyms && x.topSyms.length ? h("div", { class: "leaders" }, "Technical leaders: ", x.topSyms.map((t) => h("span", { class: "mono", text: t }))) : null)));
+  }
+
+  function card(p, asOf) {
+    const a = p.analysts || {};
+    const ed = p.earnings ? p.earnings.slice(0, 10) : null;
+    const days = ed ? daysFrom(asOf, ed) : null;
+    const earn = ed ? [h("b", { text: shortDate(ed) }), days != null && days >= 0 ? " (in " + days + (days === 1 ? " day)" : " days)") : ""] : ["—"];
+    return h("article", { class: "card", "data-sector": p.sector },
+      h("div", { class: "card-top" },
+        h("div", null, h("div", { class: "ticker", text: p.sym }), h("div", { class: "co", text: p.name })),
+        h("div", { class: "px" }, h("span", { class: "num", text: price(p.close) }), h("span", { class: "chg " + dir(p.r1d), text: pct(p.r1d, 2) + " today" }))),
+      h("div", { class: "sector-line" }, setupChip(p.setup), h("span", { text: shortSector(p.sector) + " · " + p.industry })),
+      p.thesis ? h("p", { class: "thesis", text: p.thesis }) : null,
+      h("dl", { class: "metrics" },
+        h("div", null, h("dt", { text: "Trend tests" }), h("dd", { text: p.tt + "/8" })),
+        h("div", null, h("dt", { text: "Rel. strength" }), h("dd", null, String(p.rs), h("span", { class: "rs-bar", "aria-hidden": "true" }, h("span", { style: `width:${p.rs}%` })))),
+        h("div", null, h("dt", { text: "RSI" }), h("dd", { text: String(p.rsi) })),
+        h("div", null, h("dt", { text: "vs. 50-day" }), h("dd", { text: pct(p.vs50) })),
+        h("div", null, h("dt", { text: "From 52-wk high" }), h("dd", { text: p.offHigh > -0.05 ? "At high" : pct(p.offHigh) })),
+        h("div", null, h("dt", { text: "Risk line" }), h("dd", null, price(p.risk), " ", h("small", { text: pct(p.riskPct) })))),
+      h("div", { class: "card-foot" },
+        h("span", null, "Earnings ", ...earn, days != null && days >= 0 && days <= 7 ? [" ", chip("Soon", "warn", "dot")] : null),
+        h("span", null, "Analysts ", h("b", { text: RATING[a.rating] || "—" }), a.upside != null ? " · avg. target " + pct(a.upside, 0) : "")));
+  }
+
+  function renderPicks(r) {
+    const groups = $("#pick-groups"), filters = $("#pick-filters");
+    if (!r.picks.length) {
+      filters.replaceChildren();
+      const rows = (r.screen || []).map((p) => h("tr", null, h("td", null, h("div", { class: "sym", text: p.sym }), h("div", { class: "co muted", text: p.name })), h("td", { text: shortSector(p.sector) }), h("td", null, setupChip(p.setup)), h("td", { class: "n", text: String(p.score) }), h("td", { class: "n", text: String(p.rs) }), h("td", { class: "n", text: pct(p.vs50) }), h("td", { class: "n", text: price(p.risk) })));
+      groups.replaceChildren(h("p", { class: "muted", text: "Top technical setups from today's scan (no news cross-check this edition)." }),
+        h("div", { class: "table-scroll" }, h("table", null, h("thead", null, h("tr", null, ["Stock", "Sector", "Setup"].map((t) => h("th", { text: t })), ["Score", "RS", "vs. 50-day", "Risk line"].map((t) => h("th", { class: "n", text: t })))), h("tbody", null, rows))));
+      return;
+    }
+    const sectors = ["All", ...new Set(r.picks.map((p) => p.sector))];
+    if (!sectors.includes(pickFilter)) pickFilter = "All";
+    filters.replaceChildren(...sectors.map((sct) => h("button", { type: "button", "aria-pressed": String(sct === pickFilter), text: sct === "All" ? "All sectors" : shortSector(sct),
+      onclick: () => { pickFilter = sct; renderPicks(r); } })));
+    const shown = r.picks.filter((p) => pickFilter === "All" || p.sector === pickFilter);
+    const tiers = [["buy", "In the buy zone", "Trend intact, price not stretched."], ["wait", "Strong, but wait for a pullback", "Leading stocks that have run far above their 50-day average."]];
+    groups.replaceChildren(...tiers.map(([key, title, sub]) => {
+      const list = shown.filter((p) => p.tier === key);
+      if (!list.length) return null;
+      return h("div", null, h("div", { class: "tier-head" }, h("h3", { text: title + " (" + list.length + ")" }), h("p", { text: sub })),
+        h("div", { class: "cards" }, list.map((p) => card(p, r.asOf))));
+    }));
+  }
+
+  function renderWatch(list) {
+    if (!list.length) { $("#watch-table").replaceChildren(h("p", { class: "muted", text: "No watchlist names this edition." })); return; }
+    $("#watch-table").replaceChildren(h("table", null,
+      h("thead", null, h("tr", null, h("th", { text: "Stock" }), ["Close", "From high", "RS", "vs. 50-day"].map((t) => h("th", { class: "n", text: t })), h("th", { text: "What would make it actionable" }))),
+      h("tbody", null, list.map((w) => h("tr", null,
+        h("td", null, h("div", { class: "sym", text: w.sym }), h("div", { class: "co muted", text: w.name })),
+        h("td", { class: "n", text: price(w.close) }), h("td", { class: "n " + dir(w.offHigh), text: pct(w.offHigh) }),
+        h("td", { class: "n", text: String(w.rs) }), h("td", { class: "n " + dir(w.vs50), text: pct(w.vs50) }),
+        h("td", { class: "wide-trigger", text: w.trigger }))))));
+  }
+
+  function renderList(sel, items, tone, glyph) {
+    $(sel).replaceChildren(...(items.length ? items.map((it) => {
+      const mark = shape(glyph); mark.setAttribute("class", "mark " + tone);
+      return h("li", null, mark, h("div", null, h("b", { text: it.title }), h("span", { class: "d", text: it.body })));
+    }) : [h("li", { class: "muted", text: "Nothing listed for this edition." })]));
+  }
+
+  function renderThemes(r) {
+    const trendChip = (t) => t === "Up" ? chip("Uptrend", "pos", "up") : t === "Down" ? chip("Downtrend", "neg", "down") : chip("Mixed", "neu", "flat");
+    $("#theme-table").replaceChildren(h("table", null,
+      h("thead", null, h("tr", null, h("th", { text: "Theme" }), ["1M", "3M", "12M", "vs. 200-day", "From high"].map((t) => h("th", { class: "n", text: t })), h("th", { text: "Trend" }))),
+      h("tbody", null, r.themes.map((t) => h("tr", null,
+        h("td", null, t.label, " ", h("span", { class: "mono muted", text: t.sym })),
+        ...["r1m", "r3m", "r12m", "vs200"].map((k) => h("td", { class: "n " + dir(t[k]), text: pct(t[k]) })),
+        h("td", { class: "n", text: t.offHigh > -0.5 ? "At high" : pct(t.offHigh) }), h("td", null, trendChip(t.trend)))))));
+    const indTable = (rows) => h("table", null,
+      h("thead", null, h("tr", null, h("th", { text: "Industry" }), ["Score", "Above 200-day", "3M"].map((t) => h("th", { class: "n", text: t })))),
+      h("tbody", null, rows.map((x) => h("tr", null, h("td", null, x.name, h("div", { class: "co muted", text: shortSector(x.sector) + " · " + x.n + " stocks" })),
+        h("td", { class: "n", text: x.score.toFixed(0) }), h("td", { class: "n", text: x.above200 + "%" }), h("td", { class: "n " + dir(x.r3m), text: pct(x.r3m) })))));
+    $("#ind-top").replaceChildren(indTable(r.industries.top));
+    $("#ind-bottom").replaceChildren(indTable(r.industries.bottom));
+  }
+
+  function renderMega(list) {
+    const rows = (megaAll ? list : list.slice(0, 12)).map((m) => h("tr", null,
+      h("td", null, h("div", { class: "sym", text: m.sym }), h("div", { class: "co muted", text: m.name })),
+      h("td", { class: "n", text: price(m.close) }), h("td", { class: "n " + dir(m.r1d), text: pct(m.r1d, 2) }),
+      h("td", { class: "n " + dir(m.r3m), text: pct(m.r3m) }), h("td", { class: "n", text: m.offHigh > -0.05 ? "At high" : pct(m.offHigh) }),
+      h("td", { class: "n", text: String(m.rs) }), h("td", null, setupChip(m.setup))));
+    $("#mega-table").replaceChildren(h("table", null,
+      h("thead", null, h("tr", null, h("th", { text: "Company" }), ["Close", "1D", "3M", "From high", "RS"].map((t) => h("th", { class: "n", text: t })), h("th", { text: "Setup" }))),
+      h("tbody", null, rows)));
+    const btn = $("#mega-more");
+    btn.hidden = list.length <= 12;
+    btn.textContent = megaAll ? "Show fewer" : "Show all " + list.length;
+  }
+  $("#mega-more").addEventListener("click", () => { megaAll = !megaAll; renderMega(current.megacaps); });
+
+  function renderCalendar(r) {
+    $("#cal-list").replaceChildren(...(r.calendar.length ? r.calendar.map((c) =>
+      h("li", { class: daysFrom(r.asOf, c.date) < 0 ? "past" : "" }, h("time", { datetime: c.date, text: calDate(c.date) }), h("span", { text: c.event })))
+      : [h("li", { class: "muted", text: "No calendar for this edition." })]));
+  }
+
+  function renderSources(sources) {
+    $("#sources-sec").hidden = !sources.length;
+    $("#source-list").replaceChildren(...sources.map((src, i) => {
+      const url = src && safeUrl(src.url);
+      return h("li", { id: "src-" + (i + 1) }, url ? [h("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: src.title }), h("span", { class: "host", text: host(url) })] : h("span", { class: "muted", text: "Source unavailable" }));
+    }));
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
