@@ -83,31 +83,72 @@ out = (tpl.replace("{{EDITION_CONTEXT}}", contexts[mode]).replace("{{AS_OF}}", a
 print(out)
 EOF
 
-NEWS_OK=0
-for attempt in 1 2; do
-  echo "news step, attempt $attempt ($(date +%T))"
+MODEL_ARGS=(); [[ -n "${ATB_MODEL:-}" ]] && MODEL_ARGS=(--model "$ATB_MODEL")   # e.g. ATB_MODEL=claude-sonnet-5-5
+
+# One news attempt. Returns 0 = validated narrative in $NEWS, 3 = plan usage limit hit, 1 = other failure.
+news_attempt() {
+  local tag="$1" out="$W/claude-$MODE-$1.json"
+  echo "news step, attempt $tag ($(date +%T))"
   # 25-minute hard cap; the model gets web tools only.
   perl -e 'alarm shift; exec @ARGV' 1500 \
-    claude -p --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" --output-format json \
-    < "$W/prompt-$MODE.md" > "$W/claude-$MODE-$attempt.json"
-  .venv/bin/python -c 'import json,sys; d=json.load(open(sys.argv[1])); print("cost_usd", d.get("total_cost_usd"), "turns", d.get("num_turns"), file=sys.stderr); open(sys.argv[2],"w").write(d.get("result") or "")' \
-    "$W/claude-$MODE-$attempt.json" "$NEWS" || { echo "claude returned no usable output"; continue; }
-  if .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --news "$NEWS" --check; then NEWS_OK=1; break; fi
-done
+    claude -p --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" --output-format json "${MODEL_ARGS[@]}" \
+    < "$W/prompt-$MODE.md" > "$out"
+  .venv/bin/python - "$out" "$NEWS" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("claude returned no readable output", file=sys.stderr); sys.exit(1)
+print("cost_usd", d.get("total_cost_usd"), "turns", d.get("num_turns"), file=sys.stderr)
+res = d.get("result") or ""
+if d.get("is_error"):
+    print("claude error:", res[:200], file=sys.stderr)
+    sys.exit(3 if d.get("api_error_status") == 429 or "limit" in res.lower() else 1)
+open(sys.argv[2], "w").write(res)
+PY
+  local rc=$?
+  (( rc != 0 )) && return $rc
+  .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --news "$NEWS" --check || return 1
+}
+
+publish() {  # $1 = with-news | no-news
+  if [[ "$1" == "with-news" ]]; then
+    .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --news "$NEWS" || return 1
+  else
+    .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --no-news || return 1
+  fi
+  git add docs/data
+  if git commit -q -m "$MODE edition $ID ($1)"; then
+    git push -q origin main && echo "published $ID ($1)" || { echo "push failed"; return 1; }
+  else
+    echo "nothing to commit"
+  fi
+}
+
+NEWS_OK=0
+news_attempt 1; rc=$?
+if (( rc == 1 )); then news_attempt 2; rc=$?; fi   # a bad reply gets one immediate retry; a usage limit doesn't
+(( rc == 0 )) && NEWS_OK=1
 echo "news ok: $NEWS_OK"
 
 if [[ $DRY -eq 1 ]]; then echo "dry run complete, nothing published"; exit 0; fi
 
-if [[ $NEWS_OK -eq 1 ]]; then
-  .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --news "$NEWS" || exit 1
+if (( NEWS_OK )); then
+  publish with-news || exit 1
 else
-  .venv/bin/python pipeline/build.py "$AS_OF" --edition "$MODE" --session "$SESSION" --no-news || exit 1
-fi
-
-git add docs/data
-if git commit -q -m "$MODE edition $ID"; then
-  git push -q origin main && echo "published $ID" || { echo "push failed"; exit 1; }
-else
-  echo "nothing to commit"
+  # Put the numbers-only edition up now so readers have something on time, then keep trying the
+  # news step every 15 minutes until 9:15 AM ET (pre-market) and republish as soon as it works.
+  publish no-news || exit 1
+  if [[ "$MODE" == "premarket" ]]; then
+    DEADLINE=$(.venv/bin/python -c 'import datetime as d, zoneinfo as z; n=d.datetime.now(z.ZoneInfo("America/New_York")); print(int(n.replace(hour=9, minute=15, second=0).timestamp()))')
+    n=1
+    while (( $(date +%s) + 900 < DEADLINE )); do
+      echo "waiting 15 minutes before retrying the news step"
+      sleep 900
+      n=$((n + 1))
+      news_attempt "retry$n"; rc=$?
+      if (( rc == 0 )); then publish with-news; break; fi
+    done
+  fi
 fi
 echo "== $(date) done"
