@@ -57,6 +57,8 @@ Rules:
 - risks: 3–5. calendar: the most important dated events over the next ~2 weeks, in date order.
 - sources: every source you rely on, 8–30 entries, real URLs you actually saw.
 - Numbers you state must come from the digest or a cited source. Do not invent prices, targets or dates.
+- Never quote the internal composite "score" (e.g. "score 70.3") in any text: readers never see it. Use plain measures instead: the share of stocks above their 50- or 200-day average, returns, distance from the high, relative strength.
+- The site's stock cards already show price, RS, RSI, risk line, earnings date and analyst target, so a thesis should explain why, not repeat those figures.
 - Write plainly, for a smart reader who is not a professional. No hype, no emoji, no "you should buy". Describe setups and conditions; the site carries its own disclaimer.
 
 ## Technical digest
