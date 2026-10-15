@@ -53,8 +53,11 @@ The news step shares your Claude plan's usage limits. If a run hits a limit (or 
 validated twice), the script publishes the numbers-only edition right away so the page is never empty,
 then retries the news step every 15 minutes until 9:15 AM ET and republishes the full edition as soon
 as one attempt succeeds. Heavy Claude use late at night can push the morning write-up past its
-7:20 AM ET target. To use less of the plan per run, set a lighter model in
-`~/.config/after-the-bell/env`: `ATB_MODEL=claude-sonnet-5-5`.
+7:20 AM ET target.
+
+Model: the news step runs on Sonnet (`ATB_MODEL=claude-sonnet-5-5` in `~/.config/after-the-bell/env`,
+set 2026-10-14) to use less of the plan per run. Delete that line to go back to the default model;
+each attempt logs which model it used.
 
 ## Troubleshooting
 - `claude` exits with "Not logged in": launchd normally reads the login keychain. Fallback: run

@@ -88,7 +88,7 @@ MODEL_ARGS=(); [[ -n "${ATB_MODEL:-}" ]] && MODEL_ARGS=(--model "$ATB_MODEL")   
 # One news attempt. Returns 0 = validated narrative in $NEWS, 3 = plan usage limit hit, 1 = other failure.
 news_attempt() {
   local tag="$1" out="$W/claude-$MODE-$1.json"
-  echo "news step, attempt $tag ($(date +%T))"
+  echo "news step, attempt $tag, model ${ATB_MODEL:-default} ($(date +%T))"
   # 25-minute hard cap; the model gets web tools only.
   perl -e 'alarm shift; exec @ARGV' 1500 \
     claude -p --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" --output-format json "${MODEL_ARGS[@]}" \
